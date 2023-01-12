@@ -5,10 +5,14 @@ import re
 import socket
 import threading
 import time
+import json
 
 import pandas as pd
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from fastapi import FastAPI, Body
+from pydantic import BaseModel, Field
+from starlette.responses import RedirectResponse
 
 logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s', level=logging.DEBUG, filename=u'log.log')
 subs = []
@@ -55,7 +59,7 @@ class MyHandler(FileSystemEventHandler):
             logging.exception(e)
             pass
 
-    def on_deleted(self, event):
+    def on_deleted(self, event, sock):
         print("on_deleted", event.src_path)
         logging.info('Handler message: File has been deleted')
         params = {'Params': ['Handler message: File has been deleted'], }
@@ -88,7 +92,7 @@ class MyHandler(FileSystemEventHandler):
 
 class ConditionerConfig:
     def create_cond_file(self, speed, t_in, t_out=random.randrange(10, 40)):
-        params = {'Speed': [speed], 'T_in': [t_in], 'T_out': [t_out]}
+        params = {"Speed": [speed], "T_in": [t_in], "T_out": [t_out]}
         df = pd.DataFrame(params)
         df.to_json('conditioner.json')
         logging.info('Create config file: File has been created')
@@ -97,9 +101,9 @@ class ConditionerConfig:
     def get_cond_info(self):
 
         data = pd.read_json('conditioner.json')
-        speed = data.loc[0, 'Speed']
-        t_in = data.loc[0, 'T_in']
-        t_out = data.loc[0, 'T_out']
+        speed = data.loc[0, "Speed"]
+        t_in = data.loc[0, "T_in"]
+        t_out = data.loc[0, "T_out"]
         t_out = t_out + random.randrange(-2, 2)
 
         return t_in, speed, t_out
@@ -138,7 +142,7 @@ class ConditionerConfig:
             logging.info('File conditioner not exist')
             self.create_cond_file(current_speed, current_t_in, current_t_out)
         else:
-            t_in, speed, t_out = self.get_cond_info()
+            speed, t_in, t_out = self.get_cond_info()
             logging.info('Conditioner file:ready')
             print(f"Conditioner file ready to use\n"
                   f"Current speed: {speed} rpm\n"
@@ -354,6 +358,8 @@ def client_connection(sock, cond_cycle, cond_config):
 
 
 ## Create a socket ##
+
+
 ip = input('Enter IP: ')
 port = input('Enter port: ')
 checker = IpPortChecker()
