@@ -32,6 +32,7 @@ import pandas as pd
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import threading as thread
+import lxml
 
 ## Дополнительная информация
 - Сборка логов - автоматически
