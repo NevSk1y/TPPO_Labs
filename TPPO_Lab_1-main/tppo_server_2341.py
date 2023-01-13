@@ -5,14 +5,10 @@ import re
 import socket
 import threading
 import time
-import json
 
 import pandas as pd
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
-from fastapi import FastAPI, Body
-from pydantic import BaseModel, Field
-from starlette.responses import RedirectResponse
 
 logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s', level=logging.DEBUG, filename=u'log.log')
 subs = []
@@ -50,7 +46,7 @@ class MyHandler(FileSystemEventHandler):
         try:
             logging.info('Handler message: File has been created')
             params = {'Params': ['Handler message: File has been created'], }
-            df = pd.DataFrame.from_dict(params)
+            df = pd.DataFrame(params)
             df = df.set_index('Params')
             message = df.to_xml() + '\n'
             sock.send(message.encode())
@@ -59,11 +55,11 @@ class MyHandler(FileSystemEventHandler):
             logging.exception(e)
             pass
 
-    def on_deleted(self, event, sock):
+    def on_deleted(self, event):
         print("on_deleted", event.src_path)
         logging.info('Handler message: File has been deleted')
         params = {'Params': ['Handler message: File has been deleted'], }
-        df = pd.DataFrame.from_dict(params)
+        df = pd.DataFrame(params)
         df = df.set_index('Params')
         message = df.to_xml() + '\n'
         sock.send(message.encode())
@@ -74,7 +70,7 @@ class MyHandler(FileSystemEventHandler):
         speed = data.loc[0, 'Speed']
         t_in = data.loc[0, 'T_in']
         t_out = data.loc[0, 'T_out']
-        df = pd.DataFrame.from_dict({'Speed': [speed], 'T_in': [t_in], 'T_out': [t_out]})
+        df = pd.DataFrame({'Speed': [speed], 'T_in': [t_in], 'T_out': [t_out]})
         message = df.to_xml() + '\n'
         for sock in self.subs:
             sock.send(message.encode())
@@ -84,7 +80,7 @@ class MyHandler(FileSystemEventHandler):
         print("on_moved", event.src_path)
         logging.info('File has been moved')
         params = {'Params': ['File has been moved'], }
-        df = pd.DataFrame.from_dict(params)
+        df = pd.DataFrame(params)
         df = df.set_index('Params')
         message = df.to_xml() + '\n'
         sock.send(message.encode())
@@ -92,18 +88,18 @@ class MyHandler(FileSystemEventHandler):
 
 class ConditionerConfig:
     def create_cond_file(self, speed, t_in, t_out=random.randrange(10, 40)):
-        params = {"Speed": [speed], "T_in": [t_in], "T_out": [t_out]}
-        df = pd.DataFrame.from_dict(params)
-        df.to_json('conditioner.json',  typ='series')
+        params = {'Speed': [speed], 'T_in': [t_in], 'T_out': [t_out]}
+        df = pd.DataFrame(params)
+        df.to_json('conditioner.json')
         logging.info('Create config file: File has been created')
         print('File has been created')
 
     def get_cond_info(self):
 
         data = pd.read_json('conditioner.json')
-        speed = data.loc[0, "Speed"]
-        t_in = data.loc[0, "T_in"]
-        t_out = data.loc[0, "T_out"]
+        speed = data.loc[0, 'Speed']
+        t_in = data.loc[0, 'T_in']
+        t_out = data.loc[0, 'T_out']
         t_out = t_out + random.randrange(-2, 2)
 
         return t_in, speed, t_out
@@ -141,8 +137,9 @@ class ConditionerConfig:
             current_t_out = self.set_t_out()
             logging.info('File conditioner not exist')
             self.create_cond_file(current_speed, current_t_in, current_t_out)
+            print('File conditioner not exist')
         else:
-            speed, t_in, t_out = self.get_cond_info()
+            t_in, speed, t_out = self.get_cond_info()
             logging.info('Conditioner file:ready')
             print(f"Conditioner file ready to use\n"
                   f"Current speed: {speed} rpm\n"
@@ -156,9 +153,8 @@ class ConditionerCycle:
         self.sock = socket_instance
 
     def check_cond_info(self, conditioner_config):
-        speed, t_in, t_out = conditioner_config.get_cond_info()
-        dict = {'Speed': speed, 'T_in': t_in, 'T_out': t_out}
-        df = pd.DataFrame.from_dict(dict, index=[0])
+        t_in, speed, t_out = conditioner_config.get_cond_info()
+        df = pd.DataFrame({'Speed': [speed], 'T_in': [t_in], 'T_out': [t_out]})
         message = df.to_xml() + '\n'
         self.sock.send(message.encode())
         logging.info(message)
@@ -175,7 +171,7 @@ class ConditionerCycle:
             else:
                 logging.warning('Incorrect speed value')
                 params = {'Params': ['Sorry, incorrect value'], }
-                df = pd.DataFrame.from_dict(params)
+                df = pd.DataFrame(params)
                 df = df.set_index('Params')
                 message = df.to_xml() + '\n'
                 self.sock.send(message.encode())
@@ -183,7 +179,7 @@ class ConditionerCycle:
             logging.error(e)
             logging.warning('Incorrect speed value')
             params = {'Params': ['Sorry, incorrect value'], }
-            df = pd.DataFrame.from_dict(params)
+            df = pd.DataFrame(params)
             df = df.set_index('Params')
             message = df.to_xml() + '\n'
             self.sock.send(message.encode())
@@ -198,7 +194,7 @@ class ConditionerCycle:
             else:
                 logging.warning('Incorrect inside temperature  value')
                 params = {'Params': ['Sorry, incorrect value'], }
-                df = pd.DataFrame.from_dict(params)
+                df = pd.DataFrame(params)
                 df = df.set_index('Params')
                 message = df.to_xml() + '\n'
                 self.sock.send(message.encode())
@@ -206,7 +202,7 @@ class ConditionerCycle:
             logging.error(e)
             logging.warning('Incorrect inside temperature value')
             params = {'Params': ['Sorry, incorrect value'], }
-            df = pd.DataFrame.from_dict(params)
+            df = pd.DataFrame(params)
             df = df.set_index('Params')
             message = df.to_xml() + '\n'
             self.sock.send(message.encode())
@@ -215,7 +211,7 @@ class ConditionerCycle:
         speed = 0
         conditioner_config.set_speed(speed)
         params = {'Params': ['Conditioner stopped'], }
-        df = pd.DataFrame.from_dict(params)
+        df = pd.DataFrame(params)
         df = df.set_index('Params')
         message = df.to_xml() + '\n'
         self.sock.send(message.encode())
@@ -227,7 +223,7 @@ class ConditionerCycle:
     def help(self):
         params = {'Params': [
             '"\nКоманда /get cond info - Получить значения скорости, целевой и внешней температуры" \ "\nКоманда /set speed [value] - Задать скорость вращения вентилятора (0-10 rpm)" \ "\nКоманда /set t_in [value] - Задать внутреннюю температуру кондиционера (10-35 С)" \ "\nКоманда /stop - Выключить кондиционер" \ "\nКоманда /help - Получить список всех команд" \ "\nКоманда /subscribe - Подписаться на уведомления" \   "\nКоманда /exit - отключиться от сервера'], }
-        df = pd.DataFrame.from_dict(params)
+        df = pd.DataFrame(params)
         df = df.set_index('Params')
         message = df.to_xml() + '\n'
         self.sock.send(message.encode())
@@ -243,7 +239,7 @@ class ConditionerCycle:
             logger = logging.getLogger()
             logger.disabled = True
             params = {'Params': ['\nLogging disabled (only warnings and errors)'], }
-            df = pd.DataFrame.from_dict(params)
+            df = pd.DataFrame(params)
             df = df.set_index('Params')
             message = df.to_xml() + '\n'
             self.sock.send(message.encode())
@@ -253,14 +249,14 @@ class ConditionerCycle:
         if result[0] == '1111':
             params = {'Params': ['"\nКоманда /log off - Выключить сбор логов" \
                       "\nКоманда /log on - Включить сбор логов'], }
-            df = pd.DataFrame.from_dict(params)
+            df = pd.DataFrame(params)
             df = df.set_index('Params')
             message = df.to_xml() + '\n'
             self.sock.send(message.encode())
             logging.info('Admin')
         else:
             params = {'Params': ['\nIncorrect password'], }
-            df = pd.DataFrame.from_dict(params)
+            df = pd.DataFrame(params)
             df = df.set_index('Params')
             message = df.to_xml() + '\n'
             self.sock.send(message.encode())
@@ -271,7 +267,7 @@ def client_connection(sock, cond_cycle, cond_config):
     while True:
         try:
             content = "If you don't know what to do - write '/help'"
-            df = pd.DataFrame.from_dict({"content": [content]})
+            df = pd.DataFrame({"content": [content]})
             message = df.to_xml() + '\n'
             sock.send(message.encode())
             line = sock.recv(1024).decode()
@@ -348,7 +344,7 @@ def client_connection(sock, cond_cycle, cond_config):
                 print('Incorrect command')
                 logging.warning('Incorrect command')
                 params = {'Params': ['Sorry, No such command'], }
-                df = pd.DataFrame.from_dict(params)
+                df = pd.DataFrame(params)
                 df = df.set_index('Params')
                 message = df.to_xml() + '\n'
                 sock.send(message.encode())
@@ -358,8 +354,11 @@ def client_connection(sock, cond_cycle, cond_config):
             logging.exception(e)
 
 
-## Create a socket ##
+# Create a fan file #
+cond_config = ConditionerConfig()
+cond_config.check_cond()
 
+## Create a socket ##
 ip = input('Enter IP: ')
 port = input('Enter port: ')
 checker = IpPortChecker()
@@ -375,9 +374,7 @@ except Exception as e:
     exit()
 print(f"Server started on {ip}:{port}")
 
-# Create a fan file #
-cond_config = ConditionerConfig()
-cond_config.check_cond()
+
 
 ## Create an observer ##
 observer = Observer()
@@ -395,5 +392,4 @@ while True:
         t1.start()
         time.sleep(0.1)
     else:
-        continue    
-
+        continue
