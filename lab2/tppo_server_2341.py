@@ -56,15 +56,6 @@ class MyHandler(FileSystemEventHandler):
             logging.exception(err)
             pass
 
-    # def on_deleted(self, event):
-    #     print("on_deleted", event.src_path)
-    #     logging.info('Handler message: File has been deleted')
-    #     params = {'Params': ['Handler message: File has been deleted'], }
-    #     df = pd.DataFrame(params)
-    #     df = df.set_index('Params')
-    #     message = df.to_xml() + '\n'
-    #     self.socket_instance.send(message.encode())
-
     def on_modified(self, event):
         print("on_modified", event.src_path)
         data = pd.read_json(event.src_path)
