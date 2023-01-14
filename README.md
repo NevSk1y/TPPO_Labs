@@ -13,3 +13,4 @@
 - [x] README.md
 - [x] tppo_server_2341.py - Приложение сервера
 - [x] tppo_client_2341.py - Приложение клиента
+- [x] tppo_rest_2341.py - REST API для сервера
